@@ -30,6 +30,64 @@ typedef struct BTreeNode { //16 + 16 + 16 + 1 = 49 bits roughly equivalent to 12
 } BTreeNode;
 
 
+/*Sorting function*/
+int sortmarkASC(const void* a, const void* b) {
+    const StudentRecord* studentA = *(const StudentRecord**)a;
+    const StudentRecord* studentB = *(const StudentRecord**)b;
+    // Since mark is double, we need to return int
+    if (studentA->mark < studentB->mark) return -1;
+    if (studentA->mark > studentB->mark) return 1;
+    return 0;
+}
+int sortmarkDESC(const void* a, const void* b) {
+    const StudentRecord* studentA = *(const StudentRecord**)a;
+    const StudentRecord* studentB = *(const StudentRecord**)b;
+    if (studentA->mark > studentB->mark) return -1;
+    if (studentA->mark < studentB->mark) return 1;
+    return 0;
+}
+
+
+/* Helper Functions*/
+void collectRecords(BTreeNode *root, StudentRecord **studentRecordsArr, int *num_students){
+    
+    if (root != NULL){
+        int i;
+        for (i = 0; i < root->num_keys; i++) {
+            collectRecords(root->children[i],studentRecordsArr, num_students);       // left child
+            *num_students -= 1;
+            printf("Num Students: %d\n", *num_students);
+            studentRecordsArr[*num_students] = root->keys[i];          // store pointer
+
+        }
+        collectRecords(root->children[i], studentRecordsArr, num_students);           // last child
+    }
+}
+
+StudentRecord* searchIndex(BTreeNode *root,int search_index){
+    if (root){
+        int nth_child;//determines which child we continue looking in depending on where we get a value where our search key is less than our node key
+        for (nth_child = 0; nth_child < root->num_keys;nth_child++){
+            if (root->keys[nth_child]->id == search_index){
+                StudentRecord* p_record = root->keys[nth_child];
+                return p_record;
+            }
+            else if (search_index < root->keys[nth_child]->id){
+                break;
+            }
+        }
+        searchIndex(root->children[nth_child], search_index);
+
+    }
+    else{
+        printf("Not found!");
+    }
+}
+
+/* B Tree Implementation*/
+
+
+
 // Function to create a new node
 BTreeNode *createNode(bool is_leaf) {
     BTreeNode *newNode = (struct BTreeNode *)malloc(sizeof(BTreeNode));
@@ -183,41 +241,8 @@ void updateStudentRecord(BTreeNode *root, int search_index,char *field, char *va
 
 }
 
-/* Helper Functions*/
-void collectRecords(BTreeNode *root, StudentRecord **studentRecordsArr, int *num_students){
-    
-    if (root != NULL){
-        int i;
-        for (i = 0; i < root->num_keys; i++) {
-            collectRecords(root->children[i],studentRecordsArr, num_students);       // left child
-            *num_students -= 1;
-            printf("Num Students: %d\n", *num_students);
-            studentRecordsArr[*num_students] = root->keys[i];          // store pointer
 
-        }
-        collectRecords(root->children[i], studentRecordsArr, num_students);           // last child
-    }
-}
 
-StudentRecord* searchIndex(BTreeNode *root,int search_index){
-    if (root){
-        int nth_child;//determines which child we continue looking in depending on where we get a value where our search key is less than our node key
-        for (nth_child = 0; nth_child < root->num_keys;nth_child++){
-            if (root->keys[nth_child]->id == search_index){
-                StudentRecord* p_record = root->keys[nth_child];
-                return p_record;
-            }
-            else if (search_index < root->keys[nth_child]->id){
-                break;
-            }
-        }
-        searchIndex(root->children[nth_child], search_index);
-
-    }
-    else{
-        printf("Not found!");
-    }
-}
 
 /*Printing Records*/
 void printRecord(StudentRecord *rec) {
@@ -274,23 +299,6 @@ void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
 
 
 
-
-/*Sorting function*/
-int sortmarkASC(const void* a, const void* b) {
-    const StudentRecord* studentA = *(const StudentRecord**)a;
-    const StudentRecord* studentB = *(const StudentRecord**)b;
-    // Since mark is double, we need to return int
-    if (studentA->mark < studentB->mark) return -1;
-    if (studentA->mark > studentB->mark) return 1;
-    return 0;
-}
-int sortmarkDESC(const void* a, const void* b) {
-    const StudentRecord* studentA = *(const StudentRecord**)a;
-    const StudentRecord* studentB = *(const StudentRecord**)b;
-    if (studentA->mark > studentB->mark) return -1;
-    if (studentA->mark < studentB->mark) return 1;
-    return 0;
-}
 
 
 
