@@ -134,102 +134,6 @@ void insert(BTreeNode **root, StudentRecord *key) {
     }
 }
 
-
-StudentRecord* searchIndex(BTreeNode *root,int search_index){
-    if (root){
-        int nth_child;//determines which child we continue looking in depending on where we get a value where our search key is less than our node key
-        for (nth_child = 0; nth_child < root->num_keys;nth_child++){
-            if (root->keys[nth_child]->id == search_index){
-                StudentRecord* p_record = root->keys[nth_child];
-                return p_record;
-            }
-            else if (search_index < root->keys[nth_child]->id){
-                break;
-            }
-        }
-        searchIndex(root->children[nth_child], search_index);
-
-    }
-    else{
-        printf("Not found!");
-    }
-}
-
-void printRecord(StudentRecord *rec) {
-    printf("%-10d %-15s %-25s %-5.1f\n",
-        rec->id,
-        rec->name,
-        rec->programme,
-        rec->mark
-    );
-
-}
-void printHeader(){
-    printf("%-10s %-15s %-25s %-5.1f\n", 
-    ID, NAME, PROGRAMME, MARK);
-}
-
-void showAllById(BTreeNode *root, bool descending) {
-    if (root != NULL) {
-        int i;
-        if (!descending){
-            for (i = 0; i < root->num_keys; i++) {
-                showAllById(root->children[i], descending);
-                printRecord(root->keys[i]);
-            }
-            showAllById(root->children[i], descending);
-        }
-        else{
-            for (i = root->num_keys; i > 0; i--) {
-                showAllById(root->children[i], descending);
-                printRecord(root->keys[i-1]);
-            }
-            showAllById(root->children[i], descending);
-        }
-    }
-}
-
-
-
-void updateStudentRecord(BTreeNode *root, int search_index,char *field, char *value){
-    StudentRecord * p_record = searchIndex(root, search_index);
-    if (p_record){
-        if (strcmp(field, "mark") == 0) {
-            p_record->mark = (float)atof(value);
-        }
-        // if field is 'name', update the name
-        else if (strcmp(field, "name") == 0) {
-            strcpy(p_record->name, value);
-        }
-        // if field is 'programme', update the programme
-        else if (strcmp(field, "programme") == 0) {
-            strcpy(p_record->programme, value);
-        }
-        printf("The record with ID=%d is successfully updated.\n", search_index);
-    }
-    else{
-        printf("Update went wrong");
-    }
-
-}
-
-// Defining ascending and descending for sort by mark 
-int sortmarkASC(const void* a, const void* b) {
-    const StudentRecord* studentA = *(const StudentRecord**)a;
-    const StudentRecord* studentB = *(const StudentRecord**)b;
-    // Since mark is double, we need to return int
-    if (studentA->mark < studentB->mark) return -1;
-    if (studentA->mark > studentB->mark) return 1;
-    return 0;
-}
-int sortmarkDESC(const void* a, const void* b) {
-    const StudentRecord* studentA = *(const StudentRecord**)a;
-    const StudentRecord* studentB = *(const StudentRecord**)b;
-    if (studentA->mark > studentB->mark) return -1;
-    if (studentA->mark < studentB->mark) return 1;
-    return 0;
-}
-
 void createAndInsert(BTreeNode **root,
                      int id,
                      const char *name,
@@ -257,7 +161,29 @@ void createAndInsert(BTreeNode **root,
 
 }
 
+void updateStudentRecord(BTreeNode *root, int search_index,char *field, char *value){
+    StudentRecord * p_record = searchIndex(root, search_index);
+    if (p_record){
+        if (strcmp(field, "mark") == 0) {
+            p_record->mark = (float)atof(value);
+        }
+        // if field is 'name', update the name
+        else if (strcmp(field, "name") == 0) {
+            strcpy(p_record->name, value);
+        }
+        // if field is 'programme', update the programme
+        else if (strcmp(field, "programme") == 0) {
+            strcpy(p_record->programme, value);
+        }
+        printf("The record with ID=%d is successfully updated.\n", search_index);
+    }
+    else{
+        printf("Update went wrong");
+    }
 
+}
+
+/* Helper Functions*/
 void collectRecords(BTreeNode *root, StudentRecord **studentRecordsArr, int *num_students){
     
     if (root != NULL){
@@ -270,6 +196,62 @@ void collectRecords(BTreeNode *root, StudentRecord **studentRecordsArr, int *num
 
         }
         collectRecords(root->children[i], studentRecordsArr, num_students);           // last child
+    }
+}
+
+StudentRecord* searchIndex(BTreeNode *root,int search_index){
+    if (root){
+        int nth_child;//determines which child we continue looking in depending on where we get a value where our search key is less than our node key
+        for (nth_child = 0; nth_child < root->num_keys;nth_child++){
+            if (root->keys[nth_child]->id == search_index){
+                StudentRecord* p_record = root->keys[nth_child];
+                return p_record;
+            }
+            else if (search_index < root->keys[nth_child]->id){
+                break;
+            }
+        }
+        searchIndex(root->children[nth_child], search_index);
+
+    }
+    else{
+        printf("Not found!");
+    }
+}
+
+/*Printing Records*/
+void printRecord(StudentRecord *rec) {
+    printf("%-10d %-15s %-25s %-5.1f\n",
+        rec->id,
+        rec->name,
+        rec->programme,
+        rec->mark
+    );
+
+}
+void printHeader(){
+    printf("%-10s %-15s %-25s %-5.1f\n", 
+    ID, NAME, PROGRAMME, MARK);
+}
+
+/* Show All functions for both ID and Marks*/
+void showAllById(BTreeNode *root, bool descending) {
+    if (root != NULL) {
+        int i;
+        if (!descending){
+            for (i = 0; i < root->num_keys; i++) {
+                showAllById(root->children[i], descending);
+                printRecord(root->keys[i]);
+            }
+            showAllById(root->children[i], descending);
+        }
+        else{
+            for (i = root->num_keys; i > 0; i--) {
+                showAllById(root->children[i], descending);
+                printRecord(root->keys[i-1]);
+            }
+            showAllById(root->children[i], descending);
+        }
     }
 }
 
@@ -289,6 +271,30 @@ void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
         free(studentRecordsArr);
     }
 }
+
+
+
+
+/*Sorting function*/
+int sortmarkASC(const void* a, const void* b) {
+    const StudentRecord* studentA = *(const StudentRecord**)a;
+    const StudentRecord* studentB = *(const StudentRecord**)b;
+    // Since mark is double, we need to return int
+    if (studentA->mark < studentB->mark) return -1;
+    if (studentA->mark > studentB->mark) return 1;
+    return 0;
+}
+int sortmarkDESC(const void* a, const void* b) {
+    const StudentRecord* studentA = *(const StudentRecord**)a;
+    const StudentRecord* studentB = *(const StudentRecord**)b;
+    if (studentA->mark > studentB->mark) return -1;
+    if (studentA->mark < studentB->mark) return 1;
+    return 0;
+}
+
+
+
+
 
 int main(){
     BTreeNode *root = NULL;
