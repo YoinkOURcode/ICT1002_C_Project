@@ -8,6 +8,13 @@
 #define MIN_KEYS (MIN_DEGREE - 1) 
 #define MAX_CHILDREN (MIN_DEGREE * 2)
 
+/*Header columns*/
+#define ID "ID"
+#define NAME "Name"
+#define PROGRAMME "Programme"
+#define MARK "Score"
+
+
 typedef struct StudentRecord{
     int id;
     char name[100];
@@ -15,7 +22,7 @@ typedef struct StudentRecord{
     float mark;
 } StudentRecord;
 
-typedef struct BTreeNode {
+typedef struct BTreeNode { //16 + 16 + 16 + 1 = 49 bits roughly equivalent to 12 bytes
     int num_keys; // Number of keys currently in the node
     StudentRecord *keys[MAX_KEYS]; //Array of pointers to keys with struct StudentRecord
     struct BTreeNode *children[MAX_CHILDREN]; // Array of pointers to other child nodes
@@ -148,16 +155,41 @@ StudentRecord* searchIndex(BTreeNode *root,int search_index){
     }
 }
 
-void showAll(BTreeNode *root) {
+void printRecord(StudentRecord *rec) {
+    printf("%-10d %-15s %-25s %-5.1f\n",
+        rec->id,
+        rec->name,
+        rec->programme,
+        rec->mark
+    );
+
+}
+void printHeader(){
+    printf("%-10s %-15s %-25s %-5.1f\n", 
+    ID, NAME, PROGRAMME, MARK);
+}
+
+void showAllById(BTreeNode *root, bool descending) {
     if (root != NULL) {
         int i;
-        for (i = 0; i < root->num_keys; i++) {
-            showAll(root->children[i]);
-            printf("%d\t%s\t%s\t%.1f\n", root->keys[i]->id, root->keys[i]->name,root->keys[i]->programme,root->keys[i]->mark);
+        if (!descending){
+            for (i = 0; i < root->num_keys; i++) {
+                showAllById(root->children[i], descending);
+                printRecord(root->keys[i]);
+            }
+            showAllById(root->children[i], descending);
         }
-        showAll(root->children[i]);
+        else{
+            for (i = root->num_keys; i > 0; i--) {
+                showAllById(root->children[i], descending);
+                printRecord(root->keys[i-1]);
+            }
+            showAllById(root->children[i], descending);
+        }
     }
 }
+
+
 
 void updateStudentRecord(BTreeNode *root, int search_index,char *field, char *value){
     StudentRecord * p_record = searchIndex(root, search_index);
@@ -181,13 +213,32 @@ void updateStudentRecord(BTreeNode *root, int search_index,char *field, char *va
 
 }
 
+// Defining ascending and descending for sort by mark 
+int sortmarkASC(const void* a, const void* b) {
+    const StudentRecord* studentA = *(const StudentRecord**)a;
+    const StudentRecord* studentB = *(const StudentRecord**)b;
+    // Since mark is double, we need to return int
+    if (studentA->mark < studentB->mark) return -1;
+    if (studentA->mark > studentB->mark) return 1;
+    return 0;
+}
+int sortmarkDESC(const void* a, const void* b) {
+    const StudentRecord* studentA = *(const StudentRecord**)a;
+    const StudentRecord* studentB = *(const StudentRecord**)b;
+    if (studentA->mark > studentB->mark) return -1;
+    if (studentA->mark < studentB->mark) return 1;
+    return 0;
+}
+
 void createAndInsert(BTreeNode **root,
                      int id,
                      const char *name,
                      const char *programme,
-                     float mark)
+                     float mark,
+                    int* num_students)
 {
     StudentRecord *newRec = malloc(sizeof(StudentRecord));
+    *num_students += 1;
     if (!newRec) {
         printf("Memory allocation failed.\n");
         return;
@@ -206,151 +257,111 @@ void createAndInsert(BTreeNode **root,
 
 }
 
+
+void collectRecords(BTreeNode *root, StudentRecord **studentRecordsArr, int *num_students){
+    
+    if (root != NULL){
+        int i;
+        for (i = 0; i < root->num_keys; i++) {
+            collectRecords(root->children[i],studentRecordsArr, num_students);       // left child
+            *num_students -= 1;
+            printf("Num Students: %d\n", *num_students);
+            studentRecordsArr[*num_students] = root->keys[i];          // store pointer
+
+        }
+        collectRecords(root->children[i], studentRecordsArr, num_students);           // last child
+    }
+}
+
+void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
+    StudentRecord **studentRecordsArr = calloc(*p_num_students, sizeof(StudentRecord *));
+    if (studentRecordsArr == NULL) {
+      fprintf(stderr, "Memory allocation failed!\n");
+    }
+    else{
+        int counter = *p_num_students;
+        int*p_counter = &counter;
+        collectRecords(root, studentRecordsArr, p_counter);
+        descending ? qsort(studentRecordsArr, *p_num_students, sizeof(StudentRecord *), sortmarkDESC) : qsort(studentRecordsArr, *p_num_students, sizeof(StudentRecord *), sortmarkASC);
+        for (int i = 0; i < *p_num_students; i++){
+            printRecord(studentRecordsArr[i]);
+        }
+        free(studentRecordsArr);
+    }
+}
+
 int main(){
     BTreeNode *root = NULL;
+    int num_students = 0;
+    int* p_num_students = &num_students;
 
 
     createAndInsert(&root,
                 2502841,
                 "Alicia Tan",
                 "Computer Science",
-                72.5);
+                72.5,
+            p_num_students);
 
     createAndInsert(&root,
                     2509174,
                     "Marcus Lim",
                     "Information Security",
-                    64.0);
+                    64.0,
+                p_num_students);
 
     createAndInsert(&root,
                     2505532,
                     "Samantha Ong",
                     "Data Analytics",
-                    81.0);
+                    81.0,
+                p_num_students);
 
     createAndInsert(&root,
                     2503328,
                     "Rahul Nair",
                     "Software Engineering",
-                    49.5);
+                    49.5,
+                p_num_students);
 
     createAndInsert(&root,
                     2507769,
                     "Chloe Wong",
                     "Business Analytics",
-                    90.0);
+                    90.0,
+                p_num_students);
 
     createAndInsert(&root,
                     2504417,
                     "Nicholas Lee",
                     "Applied AI",
-                    58.0);
+                    58.0,
+                p_num_students);
 
     createAndInsert(&root,
                     2506355,
                     "Emily Chan",
                     "Cybersecurity",
-                    73.0);
+                    73.0,
+                p_num_students);
 
-    char op[100];
-    int id;
-    searchIndex(root,2506358 );
+    // char op[100];
+    // int id;
+    // searchIndex(root,2506358 );
+    showAllById(root, true);
+
+    printf("\n");
+    printf("Num of students: %d\n", num_students);
+
+    showAllByMarks(root, p_num_students, false);
 
 
 
-    // while (1) {
-    //     printf("\nEnter your command:");
-    //     fgets(op, sizeof(op), stdin);
-    //     op[strcspn(op, "\n")] = 0;
-
-    //     // Lower user input
-    //     for (int i = 0; op[i]; i++) {
-    //         op[i] = tolower(op[i]);
-    //     }
-
-    //     // OPEN
-    //     if (strcmp(op, "open") == 0) {
-            
-    //     }
-    //     // SHOW ALL
-    //     else if (strcmp(op, "show all") == 0) {
-    //         int found = -1;
-    //         printf("Here are all the records found in the table \"%s\"\n", tablename);
-    //         ShowAll(students, student_count, found);
-    //     }
-    //     // SHOW ALL SORTED
-    //     else if (strstr(op, "show all sort") != NULL) {
-    //         char sortby[10];
-    //         char order[10];
-    //         if (sscanf(op, "show all sort by %s %s", sortby, order) == 2) {
-    //             ShowSorted(students, student_count, sortby, order, tablename);
-    //         }
-    //         else {
-    //             printf("Follow this format to sort the data: SHOW ALL SORT BY ID/MARK ASC/DESC.\n");
-    //         }
-    //     }
-    //     // INSERT 
-    //     else if (strstr(op, "insert") != NULL) {
-    //         if (sscanf(op, "insert id=%d", &id) == 1) {
-    //             Insert(students, id, &student_count);
-    //         }
-    //         else {
-    //             printf("Follow this format to insert new data: INSERT ID=<ID NUMBER>.\n");
-    //         }
-    //     }
-    //     // QUERY
-    //     else if (strstr(op, "query") != NULL) {
-    //         if (sscanf(op, "query id=%d", &id) == 1) {
-    //             Query(students, student_count, id);
-    //         }
-    //         else {
-    //             printf("Follow this format to make a query: QUERY ID=<ID NUMBER>.\n");
-    //         }
-    //     }
-    //     // UPDATE
-    //     else if (strstr(op, "update") != NULL) {
-    //         char field[100];
-    //         char value[100];
-    //         if (sscanf(op, "update id=%d %[^=]=%[^\n]", &id, field, value) == 3) {
-    //             Update(students, student_count, id, field, value);
-    //         }
-    //         else {
-    //             printf("Follow this format to update: UPDATE ID=<ID Number> <Field>=<Value>.\nExample: UPDATE ID=2801234 MARK=98.7\n.");
-    //         }
-    //     }
-    //     // DELETE
-    //     else if (strstr(op, "delete") != NULL) {
-    //         if (sscanf(op, "delete id=%d", &id) == 1) {
-    //             Delete(students, &student_count, id);
-    //         }
-    //         else {
-    //             printf("Follow this format to delete data: DELETE ID=<ID NUMBER>.\n");
-    //         }
-    //     }
-    //     // SAVE
-    //     else if (strcmp(op, "save") == 0) {
-    //         Save(students, student_count, filename);
-    //     }
-    //     // SUMMARY
-    //     else if (strcmp(op, "show summary") == 0) {
-    //         Summary(students, student_count);
-    //     }
-    //     else if (strcmp(op, "report programme") == 0) {
-    //         ShowProgrammeReport(students, student_count);
-    //     }
-
-    //     // Report by Mark (Wei En)
-    //     else if (strcmp(op, "report mark") == 0) {
-    //         ShowMarkReport(students, student_count);
-    //     }
-    //     else {
-    //         printf("Unrecognised input.\n");
-    //     }
-    // }
 
     
 
-    
+
+   
     return 0;
 
 }

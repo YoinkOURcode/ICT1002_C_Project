@@ -53,3 +53,6 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+#Damian's Project1 folder, for my own personal reference
+project1/
