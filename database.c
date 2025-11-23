@@ -521,26 +521,26 @@ void printHeader(){
     ID, NAME, PROGRAMME, MARK);
 }
 
-/* Show All functions for both ID and Marks*/
-void showAllById(BTreeNode *root, bool descending) {
+void traversal(BTreeNode *root, bool descending, bool needToPrintRecord) {
     if (root != NULL) {
         int i;
-        if (!descending){
-            for (i = 0; i < root->num_keys; i++) {
-                showAllById(root->children[i], descending);
-                printRecord(root->keys[i]);
+        int start_index  = descending ? root->num_keys : 0;
+        int end_index = descending ? 0 : root->num_keys ;
+        int step = descending ? -1 : 1;
+
+        for (i = start_index; i != end_index ; i += step) {
+            traversal(root->children[i], descending, needToPrintRecord);
+            if (needToPrintRecord) {
+                int key_to_print = descending ? i - 1 : i;
+                printRecord(root->keys[key_to_print]);
+                
             }
-            showAllById(root->children[i], descending);
         }
-        else{
-            for (i = root->num_keys; i > 0; i--) {
-                showAllById(root->children[i], descending);
-                printRecord(root->keys[i-1]);
-            }
-            showAllById(root->children[i], descending);
-        }
+        traversal(root->children[i], descending, needToPrintRecord);
+       
     }
 }
+
 
 void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
     StudentRecord **studentRecordsArr = calloc(*p_num_students, sizeof(StudentRecord *));
@@ -559,26 +559,26 @@ void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
     }
 }
 
-/* Functions to handle inputs in main*/
-void trim(char *s) {
-    // Trim leading spaces
-    while (*s == ' ') memmove(s, s + 1, strlen(s));
-    // Trim trailing spaces
-    int len = strlen(s);
-    while (len > 0 && s[len - 1] == ' ') s[--len] = '\0';
+void showSummaryStatistics(BTreeNode *root){
+    if (root != NULL) {
+        int i;
+        // traversal();
+    }   
 }
+
+
 
 void input_showSorted(BTreeNode *root, int *num_students, char *sortby, char *order){
     bool isDescending = strcmp(order, "desc") == 0 ;
-            if (strcmp(sortby, "id") == 0){
-                showAllById(root,  order);
-            }
-            else if (strcmp(sortby, "mark") == 0){
-                showAllByMarks(root, num_students, order);
-            }
-            else{
-                printf("Follow this format to sort the data: SHOW ALL SORT BY ID/MARK ASC/DESC.\n");
-            }
+    if (strcmp(sortby, "id") == 0){
+        traversal(root,  isDescending, true);
+    }
+    else if (strcmp(sortby, "mark") == 0){
+        showAllByMarks(root, num_students, isDescending);
+    }
+    else{
+        printf("Follow this format to sort the data: SHOW ALL SORT BY ID/MARK ASC/DESC.\n");
+    }
 }
 
 void input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *val1, char *key2, char *val2, char *key3, char *val3){
@@ -594,9 +594,7 @@ void input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *
         if (*endptr == '\0') {// string converted
             createAndInsert(root, *id, val1, val2, f, num_students);
         }
-
     }
-  
 
 }
 
@@ -686,7 +684,9 @@ int main(){
         if (strcmp(op, "show all") == 0) {
             int found = -1;
             printf("Here are all the records found in StudentRecords \"%s\"\n");
-            showAllById(root, false);
+            printHeader();
+            traversal(root, false, true);
+            // showAllById(root, false);
         }
         // SHOW ALL SORTED
         else if (strstr(op, "show all sort") != NULL) {
@@ -694,6 +694,7 @@ int main(){
             char order[10];
             if (sscanf(op, "show all sort by %s %s", sortby, order) == 2 
                 && ((strcmp(order, "desc") == 0) || (strcmp(order, "asc") == 0))){
+                printHeader();
                 input_showSorted(root, p_num_students, sortby, order);
             }
             else {
@@ -765,13 +766,13 @@ int main(){
     //     else if (strcmp(op, "save") == 0) {
     //         Save(students, student_count, filename);
     //     }
-    //     // SUMMARY
-    //     else if (strcmp(op, "show summary") == 0) {
-    //         Summary(students, student_count);
-    //     }
-    //     else if (strcmp(op, "report programme") == 0) {
-    //         ShowProgrammeReport(students, student_count);
-    //     }
+        // SUMMARY
+        // else if (strcmp(op, "show summary") == 0) {
+        //     Summary(students, student_count);
+        // }
+        // else if (strcmp(op, "report programme") == 0) {
+        //     ShowProgrammeReport(students, student_count);
+        // }
 
         // // Report by Mark (Wei En)
         // else if (strcmp(op, "report mark") == 0) {
