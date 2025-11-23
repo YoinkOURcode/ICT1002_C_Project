@@ -25,7 +25,7 @@
 
 
 
-typedef struct StudentRecord{
+typedef struct StudentRecord{ // 4 + 100 + 100 + 4 = 208
     int id;
     char name[MAX_NAME];
     char programme[MAX_PROGRAMME];
@@ -202,8 +202,19 @@ void insert(BTreeNode **root, StudentRecord *key) {
     }
 }
 
+int checkTypeAndLen(char * str, int max_len){
+    for (int i = 0; str[i] != '\0'; i++){
+        if (!isalpha(str[i]) && str[i] != ' '){
+            return 1;
+        }
+    }
+    if (strlen(str) > max_len){
+        return 1;
+    }
+    return 0;
+}
 
-void createAndInsert(
+int createAndInsert(
     BTreeNode **root,
     int id,
     char *name,
@@ -214,17 +225,21 @@ void createAndInsert(
     
     if (searchIndex(*root, id) != NULL){
         printf("The record with %s=%d already exists\n", ID, id);
-        return;
+        return 1;
     }
     else{
         StudentRecord *newRec = malloc(sizeof(StudentRecord));
         *num_students += 1;
         if (!newRec) {
             printf("Memory allocation failed.\n");
-            return;
+            return 1;
         }
 
+
         newRec->id = id;
+        if (checkTypeAndLen(name, MAX_NAME) == 1 || checkTypeAndLen(programme, MAX_PROGRAMME) == 1 || id < 1000000 || id > 9999999 || mark < 0 || mark > 100){
+            return 1;
+        }
         strncpy(newRec->name, name, sizeof(newRec->name)-1);
         newRec->name[sizeof(newRec->name)-1] = '\0';
 
@@ -233,6 +248,8 @@ void createAndInsert(
 
         newRec->mark = mark;
         insert(root, newRec);
+        printf("ID %d successfully inserted\n", id);
+        return 0;
     }
 
 }
@@ -244,6 +261,10 @@ void updateStudentRecord(BTreeNode *root, int search_index,char *field, char *va
             char *endptr;
             float f = strtof(value, &endptr);
             if (*endptr == '\0'){
+                if (f < 0 || f > 100){
+                    printf("Please enter a valid mark between 0-100");
+                    return;
+                }
                 p_record->mark = f;
             }
             else{
@@ -253,16 +274,26 @@ void updateStudentRecord(BTreeNode *root, int search_index,char *field, char *va
         }
         // if field is 'name', update the name
         else if (strcmp(field, "name") == 0) {
+            if (checkTypeAndLen(value, MAX_NAME) == 1){
+                printf("Invalid data type for name!\n");
+                return;
+            }
             strcpy(p_record->name, value);
+            printf("The record with ID=%d is successfully updated.\n", search_index);
+
         }
         // if field is 'programme', update the programme
         else if (strcmp(field, "programme") == 0) {
+            if (checkTypeAndLen(value, MAX_PROGRAMME) == 1){
+                printf("Invalid data type for programme!\n");
+                return;
+            }
             strcpy(p_record->programme, value);
+            printf("The record with ID=%d is successfully updated.\n", search_index);
         }
-        printf("The record with ID=%d is successfully updated.\n", search_index);
     }
     else{
-        printf("Record not found!\n");
+        printf("Record with ID=%d not found!\n", search_index);
     }
 
 }
@@ -416,14 +447,13 @@ void fill(BTreeNode *node, int idx) {
 }
 
 /* The main recursive removal routine: remove key with id from subtree rooted at node */
-void removeKey(BTreeNode *node, int id, int* num_students) {
+int removeKey(BTreeNode *node, int id, int* num_students) {
     int idx = 0;
     while (idx < node->num_keys && node->keys[idx]->id < id) idx++;
 
     // Case 1: key is present in this node
     if (idx < node->num_keys && node->keys[idx]->id == id) {
         *num_students -= 1; // Since key is successfully found, it will be removed ,and thus num of students will decrease by 1
-        printf("ID %d deleted succesfully\n", id);
         if (node->is_leaf) {
             // found in leaf
             removeFromLeaf(node, idx);
@@ -457,17 +487,19 @@ void removeKey(BTreeNode *node, int id, int* num_students) {
                 node->keys[idx] = copy;
 
                 removeKey(node->children[idx + 1], succ->id, num_students);
+
             } else {
                 // merge and then recurse to the merged child
                 mergeChild(node, idx);
                 removeKey(node->children[idx], id, num_students);
+
             }
         }
     } else { // Case 2: key is not present in this node
         if (node->is_leaf) {
             printf("ID %d not found in database!\n", id);
             // Key not present in tree
-            return;
+            return 1;
         }
         // Determine if the child where the key may exist has at least t keys; if not, fill it
         bool flag = (idx == node->num_keys); // indicates if key is in last child
@@ -489,7 +521,9 @@ void removeKey(BTreeNode *node, int id, int* num_students) {
 void deleteKey(BTreeNode **rootRef, int id, int*num_students) {
     if (*rootRef == NULL) return;
 
-    removeKey(*rootRef, id, num_students);
+    if (removeKey(*rootRef, id, num_students) != 1){printf("ID %d deleted successfully\n", id);}
+    
+
 
     // If root has 0 keys, make its first child the new root (if any)
     if ((*rootRef)->num_keys == 0) {
@@ -635,9 +669,11 @@ void input_open(BTreeNode **root, const char *filename, int *num_students){
 void input_showSorted(BTreeNode *root, int *num_students, char *sortby, char *order){
     bool isDescending = strcmp(order, "desc") == 0 ;
     if (strcmp(sortby, "id") == 0){
+        printHeader();
         traversal(root,  isDescending, NULL, NULL);
     }
     else if (strcmp(sortby, "mark") == 0){
+        printHeader();
         showAllByMarks(root, num_students, isDescending);
     }
     else{
@@ -653,12 +689,16 @@ void input_showSummaryStatistics(BTreeNode *root, int *num_students){
      */
     float summaryStatistics[5] = {101.0,-1.0,0.0,0.0,0.0};
     traversal(root,  false, summaryStatistics, NULL);
-    printf("Total Number of students: %d\n", *num_students);
-    printf("Average Mark: %.1f\n",(summaryStatistics[4] / *num_students));
-    printf("Highest Mark: %.1f by Student %s\n", summaryStatistics[1], searchIndex(root, (int)summaryStatistics[3])->name);
-    printf("Lowest Mark: %.1f by Student %s\n", summaryStatistics[0], searchIndex(root, (int)summaryStatistics[2])->name);
+    if (*num_students > 0){
+        printf("Total Number of students: %d\n", *num_students);
+        printf("Average Mark: %.1f\n",(summaryStatistics[4] / *num_students));
+        printf("Highest Mark: %.1f by Student %s\n", summaryStatistics[1], searchIndex(root, (int)summaryStatistics[3])->name);
+        printf("Lowest Mark: %.1f by Student %s\n", summaryStatistics[0], searchIndex(root, (int)summaryStatistics[2])->name);
 
-
+    }
+    else{
+        printf("No data found!\n");
+    }
     // for (int i = 0;i < 5; i++){
     //     printf("summaryStatistics at position %d:%.1f\n",i, summaryStatistics[i]);
     // }
@@ -675,7 +715,12 @@ void input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *
         float f = strtof(val3, &endptr);
 
         if (*endptr == '\0') {// string converted
-            createAndInsert(root, *id, val1, val2, f, num_students);
+            if (createAndInsert(root, *id, val1, val2, f, num_students) == 1){
+                printf("Invalid Input!\n");
+            }
+        }
+        else{
+            printf("Invalid Input!\n");
         }
     }
 
@@ -732,6 +777,8 @@ void insertDataForTesting(BTreeNode **root, int * p_num_students){
                 p_num_students);
 }
 
+
+
 int main(){
     BTreeNode *root = NULL;
     int num_students = 0;
@@ -777,7 +824,6 @@ int main(){
             char order[10];
             if (sscanf(op, "show all sort by %s %s", sortby, order) == 2 
                 && ((strcmp(order, "desc") == 0) || (strcmp(order, "asc") == 0))){
-                printHeader();
                 input_showSorted(root, p_num_students, sortby, order);
             }
             else {
@@ -800,7 +846,6 @@ int main(){
                 key2, val2,
                 key3, val3) == 7) {
                 input_insert(&root, &id, p_num_students,key1,val1,key2,val2,key3,val3 );
-                printf("ID %d successfully inserted\n", id);
 
                 
             }
@@ -827,8 +872,8 @@ int main(){
         }
         // UPDATE
         else if (strstr(op, "update") != NULL) {
-            char field[100];
-            char value[100];
+            char field[MAX_PROGRAMME];
+            char value[MAX_PROGRAMME];
             if (sscanf(op, "update id=%d %[^=]=%[^\n]", &id, field, value) == 3) {
                 updateStudentRecord(root, id, field, value);
             }

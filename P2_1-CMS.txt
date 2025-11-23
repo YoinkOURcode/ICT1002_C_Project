@@ -3,5 +3,4 @@
 2504417,Nicholas Lee,Applied AI,58.0
 2505532,Samantha Ong,Data Analytics,81.0
 2506355,Emily Chan,Cybersecurity,73.0
-2507769,Chloe Wong,Business Analytics,90.0
 2509174,Marcus Lim,Information Security,64.0
