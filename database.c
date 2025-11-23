@@ -21,6 +21,7 @@
 /*Max values for struct*/
 #define MAX_NAME 100
 #define MAX_PROGRAMME 100
+#define MAX_LINE (MAX_NAME + MAX_PROGRAMME + 20) // Max amount of characters to read from database
 
 
 
@@ -201,11 +202,12 @@ void insert(BTreeNode **root, StudentRecord *key) {
     }
 }
 
+
 void createAndInsert(
     BTreeNode **root,
     int id,
-    const char *name,
-    const char *programme,
+    char *name,
+    char *programme,
     float mark,
     int* num_students){
     //Creates a studentrecord struct, and inserts it into the b tree
@@ -230,7 +232,6 @@ void createAndInsert(
         newRec->programme[sizeof(newRec->programme)-1] = '\0';
 
         newRec->mark = mark;
-
         insert(root, newRec);
     }
 
@@ -505,24 +506,29 @@ void deleteKey(BTreeNode **rootRef, int id, int*num_students) {
     }
 }
 
-
 /*Printing Records*/
-void printRecord(StudentRecord *rec) {
-    printf("%-10d %-15s %-25s %-5.1f\n",
-        rec->id,
-        rec->name,
-        rec->programme,
-        rec->mark
-    );
-
+void printRecord(StudentRecord *rec, FILE* file) {
+    //Have option to print as output, or print to file
+    if (file == NULL){
+        printf("%-10d %-15s %-25s %-5.1f\n",
+            rec->id,
+            rec->name,
+            rec->programme,
+            rec->mark
+        );
+    }
+    else{
+       fprintf(file, "%d,%s,%s,%.1f\n", rec->id, rec->name, rec->programme, rec->mark);
+    }
 }
+
 void printHeader(){
     printf("%-10s %-15s %-25s %-5s\n", 
     ID, NAME, PROGRAMME, MARK);
 }
 
 /*Show ALl functions*/
-void traversal(BTreeNode *root, bool descending, float* summaryStatistics) {
+void traversal(BTreeNode *root, bool descending, float* summaryStatistics, FILE* file) {
     if (root != NULL) {
         int i;
         int start_index  = descending ? root->num_keys : 0;
@@ -532,10 +538,10 @@ void traversal(BTreeNode *root, bool descending, float* summaryStatistics) {
         
 
         for (i = start_index; i != end_index ; i += step) {
-            traversal(root->children[i], descending, summaryStatistics);
+            traversal(root->children[i], descending, summaryStatistics, file);
             int key_to_index = descending ? i - 1 : i;
             if (summaryStatistics == NULL) {
-                printRecord(root->keys[key_to_index]);   
+                printRecord(root->keys[key_to_index], file);   
             }
             else{
                 /**
@@ -555,15 +561,10 @@ void traversal(BTreeNode *root, bool descending, float* summaryStatistics) {
                 summaryStatistics[4] += root->keys[key_to_index]->mark;
             }
         }
-        traversal(root->children[i], descending, summaryStatistics);
+        traversal(root->children[i], descending, summaryStatistics, file);
        
     }
 }
-
-
-
-
-
 
 void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
     StudentRecord **studentRecordsArr = calloc(*p_num_students, sizeof(StudentRecord *));
@@ -576,19 +577,65 @@ void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
         collectRecords(root, studentRecordsArr, p_counter);
         descending ? qsort(studentRecordsArr, *p_num_students, sizeof(StudentRecord *), sortmarkDESC) : qsort(studentRecordsArr, *p_num_students, sizeof(StudentRecord *), sortmarkASC);
         for (int i = 0; i < *p_num_students; i++){
-            printRecord(studentRecordsArr[i]);
+            printRecord(studentRecordsArr[i] , NULL);
         }
         free(studentRecordsArr);
     }
 }
 
+void input_save(BTreeNode *root, const char* filename ){
+    FILE *file = fopen(filename, "w");
+    if (file == NULL){
+        printf("The file cannot be found.\n");
+        return;
+    }
+    traversal(root, false, NULL, file);
+    fclose(file);
+    printf("The database file \"%s\" is successfully saved.\n", filename);
+}
 
+void input_open(BTreeNode **root, const char *filename, int *num_students){
+    char line[MAX_LINE];
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Failed to open file");
+        return;
+    }
+    char *token;
+    int id;
+    char name[MAX_NAME];
+    char programme[MAX_PROGRAMME];
+    float mark;
 
+    while (fgets(line, sizeof(line), file)) {
+        // Remove newline at the end if present
+        line[strcspn(line, "\n")] = '\0';
+
+        // Parse line
+
+        token = strtok(line, ",");  // first token = studentID
+        id = atoi(token);
+
+        token = strtok(NULL, ",");  // second token = name
+        strcpy(name, token);
+
+        token = strtok(NULL, ",");  // third token = program
+        strcpy(programme, token);
+
+        token = strtok(NULL, ",");  // fourth token = mark
+        mark = atof(token);
+
+        createAndInsert(root, id, name, programme, mark, num_students);
+    }
+    
+    fclose(file);
+
+}
 
 void input_showSorted(BTreeNode *root, int *num_students, char *sortby, char *order){
     bool isDescending = strcmp(order, "desc") == 0 ;
     if (strcmp(sortby, "id") == 0){
-        traversal(root,  isDescending, NULL);
+        traversal(root,  isDescending, NULL, NULL);
     }
     else if (strcmp(sortby, "mark") == 0){
         showAllByMarks(root, num_students, isDescending);
@@ -605,7 +652,7 @@ void input_showSummaryStatistics(BTreeNode *root, int *num_students){
      * [<lowest_mark>,<highest_mark>,<id of student with lowest_mark>,<id of student with highest_mark>, <total_marks>]
      */
     float summaryStatistics[5] = {101.0,-1.0,0.0,0.0,0.0};
-    traversal(root,  false, summaryStatistics);
+    traversal(root,  false, summaryStatistics, NULL);
     printf("Total Number of students: %d\n", *num_students);
     printf("Average Mark: %.1f\n",(summaryStatistics[4] / *num_students));
     printf("Highest Mark: %.1f by Student %s\n", summaryStatistics[1], searchIndex(root, (int)summaryStatistics[3])->name);
@@ -689,9 +736,10 @@ int main(){
     BTreeNode *root = NULL;
     int num_students = 0;
     int* p_num_students = &num_students;
+    char filename[256] = "P2_1-CMS.txt";
 
 
-    insertDataForTesting(&root, p_num_students);
+    // insertDataForTesting(&root, p_num_students);
 
     char op[100];
     int id;
@@ -707,18 +755,20 @@ int main(){
         }
 
         // // OPEN
-        // if (strcmp(op, "open") == 0) {
-        //     student_count = Open(students, filename);
-        //     if(student_count != 0){
-        //         printf("The database file \"%s\" is successfully opened.\n", filename);
-        //     }
-        // }
+        if (strcmp(op, "open") == 0) {
+            input_open(&root, filename, p_num_students);
+            if(num_students != 0){
+                printf("The database file \"%s\" is successfully opened.\n", filename);
+            }
+            else{
+                printf("Opening went wrong\n");
+            }
+        }
         // SHOW ALL
-        if (strcmp(op, "show all") == 0) {
-            int found = -1;
+        else if (strcmp(op, "show all") == 0) {
             printf("Here are all the records found in StudentRecords \"%s\"\n");
             printHeader();
-            traversal(root, false, NULL);
+            traversal(root, false, NULL, NULL);
             // showAllById(root, false);
         }
         // SHOW ALL SORTED
@@ -764,7 +814,7 @@ int main(){
                 StudentRecord * rec = searchIndex(root, id);
                 if(rec) {
                     printHeader();
-                    printRecord(rec);
+                    printRecord(rec , NULL);
                 }
                 else{
                     printf("ID %d not found!\n",id );
@@ -795,10 +845,10 @@ int main(){
                 printf("Follow this format to delete data: DELETE ID=<ID NUMBER>.\n");
             }
         }
-    //     // SAVE
-    //     else if (strcmp(op, "save") == 0) {
-    //         Save(students, student_count, filename);
-    //     }
+        // SAVE
+        else if (strcmp(op, "save") == 0) {
+            input_save(root, filename);
+        }
         // SUMMARY
         else if (strcmp(op, "show summary") == 0) {
            input_showSummaryStatistics(root, p_num_students);
@@ -811,9 +861,9 @@ int main(){
         // else if (strcmp(op, "report mark") == 0) {
         //     ShowMarkReport(students, student_count);
         // }
-        // else {
-        //     printf("Unrecognised input.\n");
-        // }
+        else {
+            printf("Unrecognised input.\n");
+        }
     }
 
     
