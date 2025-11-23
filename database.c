@@ -521,25 +521,48 @@ void printHeader(){
     ID, NAME, PROGRAMME, MARK);
 }
 
-void traversal(BTreeNode *root, bool descending, bool needToPrintRecord) {
+/*Show ALl functions*/
+void traversal(BTreeNode *root, bool descending, float* summaryStatistics) {
     if (root != NULL) {
         int i;
         int start_index  = descending ? root->num_keys : 0;
         int end_index = descending ? 0 : root->num_keys ;
         int step = descending ? -1 : 1;
 
+        
+
         for (i = start_index; i != end_index ; i += step) {
-            traversal(root->children[i], descending, needToPrintRecord);
-            if (needToPrintRecord) {
-                int key_to_print = descending ? i - 1 : i;
-                printRecord(root->keys[key_to_print]);
-                
+            traversal(root->children[i], descending, summaryStatistics);
+            int key_to_index = descending ? i - 1 : i;
+            if (summaryStatistics == NULL) {
+                printRecord(root->keys[key_to_index]);   
+            }
+            else{
+                /**
+                 * summaryStatistics not null means we are using traversal for sumamry      
+                 * summaryStatistics array will be in this format
+                 * [<lowest_mark>,<highest_mark>,<id of student with lowest_mark>,<id of student with highest_mark>, <total_marks>]
+                 */
+                if (root->keys[key_to_index]->mark < summaryStatistics[0]){
+                    summaryStatistics[0] = root->keys[key_to_index]->mark;
+                    summaryStatistics[2] = root->keys[key_to_index]->id;
+
+                }
+                else if (root->keys[key_to_index]->mark > summaryStatistics[1]){
+                    summaryStatistics[1] = root->keys[key_to_index]->mark;
+                    summaryStatistics[3] = root->keys[key_to_index]->id;
+                }
+                summaryStatistics[4] += root->keys[key_to_index]->mark;
             }
         }
-        traversal(root->children[i], descending, needToPrintRecord);
+        traversal(root->children[i], descending, summaryStatistics);
        
     }
 }
+
+
+
+
 
 
 void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
@@ -559,19 +582,13 @@ void showAllByMarks(BTreeNode *root, int *p_num_students, bool descending){
     }
 }
 
-void showSummaryStatistics(BTreeNode *root){
-    if (root != NULL) {
-        int i;
-        // traversal();
-    }   
-}
 
 
 
 void input_showSorted(BTreeNode *root, int *num_students, char *sortby, char *order){
     bool isDescending = strcmp(order, "desc") == 0 ;
     if (strcmp(sortby, "id") == 0){
-        traversal(root,  isDescending, true);
+        traversal(root,  isDescending, NULL);
     }
     else if (strcmp(sortby, "mark") == 0){
         showAllByMarks(root, num_students, isDescending);
@@ -579,6 +596,25 @@ void input_showSorted(BTreeNode *root, int *num_students, char *sortby, char *or
     else{
         printf("Follow this format to sort the data: SHOW ALL SORT BY ID/MARK ASC/DESC.\n");
     }
+}
+
+void input_showSummaryStatistics(BTreeNode *root, int *num_students){
+    /**
+     * summaryStatistics not null means we are using traversal for sumamry      
+     * summaryStatistics array will be in this format
+     * [<lowest_mark>,<highest_mark>,<id of student with lowest_mark>,<id of student with highest_mark>, <total_marks>]
+     */
+    float summaryStatistics[5] = {101.0,-1.0,0.0,0.0,0.0};
+    traversal(root,  false, summaryStatistics);
+    printf("Total Number of students: %d\n", *num_students);
+    printf("Average Mark: %.1f\n",(summaryStatistics[4] / *num_students));
+    printf("Highest Mark: %.1f by Student %s\n", summaryStatistics[1], searchIndex(root, (int)summaryStatistics[3])->name);
+    printf("Lowest Mark: %.1f by Student %s\n", summaryStatistics[0], searchIndex(root, (int)summaryStatistics[2])->name);
+
+
+    // for (int i = 0;i < 5; i++){
+    //     printf("summaryStatistics at position %d:%.1f\n",i, summaryStatistics[i]);
+    // }
 }
 
 void input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *val1, char *key2, char *val2, char *key3, char *val3){
@@ -598,71 +634,68 @@ void input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *
 
 }
 
-int main(){
-    BTreeNode *root = NULL;
-    int num_students = 0;
-    int* p_num_students = &num_students;
-
-
-    createAndInsert(&root,
+void insertDataForTesting(BTreeNode **root, int * p_num_students){
+    createAndInsert(root,
                 2502841,
                 "Alicia Tan",
                 "Computer Science",
                 72.5,
             p_num_students);
 
-    createAndInsert(&root,
+    createAndInsert(root,
                     2509174,
                     "Marcus Lim",
                     "Information Security",
                     64.0,
                 p_num_students);
 
-    createAndInsert(&root,
+    createAndInsert(root,
                     2505532,
                     "Samantha Ong",
                     "Data Analytics",
                     81.0,
                 p_num_students);
 
-    createAndInsert(&root,
+    createAndInsert(root,
                     2503328,
                     "Rahul Nair",
                     "Software Engineering",
                     49.5,
                 p_num_students);
 
-    createAndInsert(&root,
+    createAndInsert(root,
                     2507769,
                     "Chloe Wong",
                     "Business Analytics",
                     90.0,
                 p_num_students);
 
-    createAndInsert(&root,
+    createAndInsert(root,
                     2504417,
                     "Nicholas Lee",
                     "Applied AI",
                     58.0,
                 p_num_students);
 
-    createAndInsert(&root,
+    createAndInsert(root,
                     2506355,
                     "Emily Chan",
                     "Cybersecurity",
                     73.0,
                 p_num_students);
+}
+
+int main(){
+    BTreeNode *root = NULL;
+    int num_students = 0;
+    int* p_num_students = &num_students;
+
+
+    insertDataForTesting(&root, p_num_students);
 
     char op[100];
     int id;
 
-    
-    
-    
-    
-    
-
-    
     while (1) {
         printf("\nEnter your command:");
         fgets(op, sizeof(op), stdin);
@@ -685,7 +718,7 @@ int main(){
             int found = -1;
             printf("Here are all the records found in StudentRecords \"%s\"\n");
             printHeader();
-            traversal(root, false, true);
+            traversal(root, false, NULL);
             // showAllById(root, false);
         }
         // SHOW ALL SORTED
@@ -767,9 +800,9 @@ int main(){
     //         Save(students, student_count, filename);
     //     }
         // SUMMARY
-        // else if (strcmp(op, "show summary") == 0) {
-        //     Summary(students, student_count);
-        // }
+        else if (strcmp(op, "show summary") == 0) {
+           input_showSummaryStatistics(root, p_num_students);
+        }
         // else if (strcmp(op, "report programme") == 0) {
         //     ShowProgrammeReport(students, student_count);
         // }
