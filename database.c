@@ -213,6 +213,7 @@ int checkTypeAndLen(char * str, int max_len){
         }
     }
     if (strlen(str) > max_len){
+        printf("Length too long\n");
         return 1;
     }
     return 0;
@@ -739,7 +740,8 @@ void input_showSummaryStatistics(BTreeNode *root, int *num_students){
 
 void input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *val1, char *key2, char *val2, char *key3, char *val3){
     if (strcmp(key1, "name") != 0 || strcmp(key2, "programme") != 0 || strcmp(key3, "mark") != 0){
-        printf("The order matters! Please follow the format given: INSERT ID=<ID NUMBER> NAME=<NAME> NAME=<PROGRAMME>MARK=<MARK>\n");
+        printf("The order matters! Please follow the format given: INSERT ID=<ID NUMBER> NAME=<NAME> NAME=<PROGRAMME> MARK=<MARK>\n");
+
         return;
     }
     else{
@@ -874,13 +876,13 @@ int main(){
             char val3[MAX_PROGRAMME];
 
 
-            if (sscanf(op,"insert id=%d " "%[^=]=%[^p] " "%[^=]=%[^m] " "%[^=]=%s", &id,
+             if (sscanf(op,"insert id=%d " "%[^=]=%[^p] " "%[^=]=%[^m] " "%[^=]=%s", &id,
                 key1, val1,
                 key2, val2,
                 key3, val3) == 7) {
                 input_insert(&root, &id, p_num_students,key1,val1,key2,val2,key3,val3 );
-
                 
+
             }
             else {
                 printf("Follow this format to insert new data: INSERT ID=<ID NUMBER> NAME=<NAME> PROGRAMME=<PROGRAMME>MARK=<MARK>\n");

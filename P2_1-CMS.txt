@@ -2,7 +2,5 @@
 2503328,Rahul Nair,Software Engineering,49.5
 2504417,Nicholas Lee,Applied AI,58.0
 2505532,Samantha Ong,Data Analytics,81.0
-2506355,dd,Cybersecurity,73.0
-2502293,jkosjnkf,oikewnfir,344.56
+2506355,Emily Chan,Cybersecurity,73.0
 2509174,Marcus Lim,Information Security,64.0
-
