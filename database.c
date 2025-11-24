@@ -104,6 +104,9 @@ BTreeNode *createNode(bool is_leaf) {
     for (int i = 0; i < MAX_CHILDREN; i++) {
         newNode->children[i] = NULL;
     }
+    for (int i = 0; i < MAX_KEYS; i++){
+        newNode->keys[i] = NULL;
+    }
     return newNode;
 }
 
@@ -111,6 +114,7 @@ BTreeNode *createNode(bool is_leaf) {
 void splitChild(BTreeNode *parent, int index) {
     BTreeNode *child = parent->children[index];
     BTreeNode *newNode = createNode(child->is_leaf);
+    
 
     newNode->num_keys = MIN_KEYS;
 
@@ -565,9 +569,24 @@ void printHeader(){
 void traversal(BTreeNode *root, bool descending, float* summaryStatistics, FILE* file) {
     if (root != NULL) {
         int i;
-        int start_index  = descending ? root->num_keys : 0;
-        int end_index = descending ? 0 : root->num_keys ;
-        int step = descending ? -1 : 1;
+        // int start_index  = descending ? root->num_keys : 0;
+        // int end_index = descending ? 0 : root->num_keys ;
+        // int step = descending ? -1 : 1;
+
+        int start_index;
+        int end_index;
+        int step;
+
+        if (descending){
+            start_index = root->num_keys;
+            end_index = 0;
+            step = -1;
+        }
+        else{
+            start_index = 0;
+            end_index =  root->num_keys;
+            step = 1;
+        }
 
         
 
@@ -813,7 +832,7 @@ int main(){
         }
         // SHOW ALL
         else if (strcmp(op, "show all") == 0) {
-            printf("Here are all the records found in StudentRecords \"%s\"\n");
+            printf("Here are all the records found in StudentRecords \n");
             printHeader();
             traversal(root, false, NULL, NULL);
             // showAllById(root, false);
