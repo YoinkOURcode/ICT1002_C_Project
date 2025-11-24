@@ -647,12 +647,12 @@ void input_save(BTreeNode *root, const char* filename ){
     printf("The database file \"%s\" is successfully saved.\n", filename);
 }
 
-void input_open(BTreeNode **root, const char *filename, int *num_students){
+int input_open(BTreeNode **root, const char *filename, int *num_students){
     char line[MAX_LINE];
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         perror("Failed to open file");
-        return;
+        return 1;
     }
     char *token;
     int id;
@@ -664,24 +664,38 @@ void input_open(BTreeNode **root, const char *filename, int *num_students){
         // Remove newline at the end if present
         line[strcspn(line, "\n")] = '\0';
 
+        if (line[0] == '\0') continue;
+        
+
         // Parse line
 
         token = strtok(line, ",");  // first token = studentID
+
         id = atoi(token);
 
+
         token = strtok(NULL, ",");  // second token = name
-        strcpy(name, token);
+        if (token == NULL){
+            printf("Malformed input!\n");
+            continue;
+        }
+        strncpy(name, token, MAX_NAME);
 
         token = strtok(NULL, ",");  // third token = program
-        strcpy(programme, token);
+        strncpy(programme, token, MAX_PROGRAMME);
 
         token = strtok(NULL, ",");  // fourth token = mark
         mark = atof(token);
 
-        createAndInsert(root, id, name, programme, mark, num_students);
+        if (createAndInsert(root, id, name, programme, mark, num_students) == 1){
+            printf("Failure to insert for this record\n", id);
+            continue;
+        }
     }
     
     fclose(file);
+
+    return 0;
 
 }
 
@@ -822,8 +836,8 @@ int main(){
 
         // // OPEN
         if (strcmp(op, "open") == 0) {
-            input_open(&root, filename, p_num_students);
-            if(num_students != 0){
+            int open_results = input_open(&root, filename, p_num_students);
+            if(num_students != 0 && open_results != 1){
                 printf("The database file \"%s\" is successfully opened.\n", filename);
             }
             else{
