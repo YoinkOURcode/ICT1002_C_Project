@@ -980,7 +980,6 @@ int main(){
         }
         // SHOW ALL
         else if (strcmp(op, "show all") == 0) {
-            printf("Op:%s",op);
             printf("Here are all the records found in StudentRecords \n");
             printHeader();
             traversal(root, false, NULL, NULL);
