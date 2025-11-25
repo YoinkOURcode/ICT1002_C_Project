@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <errno.h>
 
 
 /*B Tree parameters*/
@@ -22,6 +23,11 @@
 #define MAX_NAME 100
 #define MAX_PROGRAMME 100
 #define MAX_LINE (MAX_NAME + MAX_PROGRAMME + 20) // Max amount of characters to read from database
+#define MAX_INPUT 100
+#define MIN_ID 1000000
+#define MAX_ID 9999999
+#define MIN_MARK 0
+#define MAX_MARK 100
 
 
 
@@ -234,17 +240,16 @@ int createAndInsert(
     }
     else{
         StudentRecord *newRec = malloc(sizeof(StudentRecord));
-        *num_students += 1;
         if (!newRec) {
             printf("Memory allocation failed.\n");
             return 1;
         }
 
-
-        newRec->id = id;
-        if (checkTypeAndLen(name, MAX_NAME) == 1 || checkTypeAndLen(programme, MAX_PROGRAMME) == 1 || id < 1000000 || id > 9999999 || mark < 0 || mark > 100){
+        if (checkTypeAndLen(name, MAX_NAME) == 1 || checkTypeAndLen(programme, MAX_PROGRAMME) == 1 || id < MIN_ID || id > MAX_ID || mark < MIN_MARK || mark > MAX_MARK){
             return 1;
         }
+        newRec->id = id;
+        
         strncpy(newRec->name, name, sizeof(newRec->name)-1);
         newRec->name[sizeof(newRec->name)-1] = '\0';
 
@@ -254,6 +259,8 @@ int createAndInsert(
         newRec->mark = mark;
         insert(root, newRec);
         printf("ID %d successfully inserted\n", id);
+        *num_students += 1;
+
         return 0;
     }
 
@@ -648,6 +655,32 @@ void input_save(BTreeNode *root, const char* filename ){
     printf("The database file \"%s\" is successfully saved.\n", filename);
 }
 
+int safe_atoi(const char *s, int *out) {
+    if (!s || !out) return -1;
+
+    errno = 0;
+    char *end;
+    long val = strtol(s, &end, 10);
+
+    // No digits were parsed
+    if (end == s) return -1;
+
+    // Reject trailing non-whitespace characters
+    while (*end != '\0') {
+        if (!isspace((unsigned char)*end)) return -1;
+        end++;
+    }
+
+    // Check overflow/underflow for int
+    if (val > MAX_ID || val < MIN_ID) return -1;
+
+    if (errno == ERANGE) return -1;
+
+    *out = (int)val;
+    return *out;
+}
+
+
 int input_open(BTreeNode **root, const char *filename, int *num_students){
     char line[MAX_LINE];
     FILE *file = fopen(filename, "r");
@@ -672,7 +705,12 @@ int input_open(BTreeNode **root, const char *filename, int *num_students){
 
         token = strtok(line, ",");  // first token = studentID
 
-        id = atoi(token);
+        id = safe_atoi(token, &id);
+
+        if (id == -1){
+            printf("Invalid ID!\n");
+            continue;
+        }
 
 
         token = strtok(NULL, ",");  // second token = name
@@ -682,16 +720,31 @@ int input_open(BTreeNode **root, const char *filename, int *num_students){
         }
         strncpy(name, token, MAX_NAME);
 
-        token = strtok(NULL, ",");  // third token = program
+        token = strtok(NULL, ",");  // third token = program]
+        if (token == NULL){
+            printf("Malformed input!\n");
+            continue;
+        }
         strncpy(programme, token, MAX_PROGRAMME);
 
         token = strtok(NULL, ",");  // fourth token = mark
-        mark = atof(token);
-
-        if (createAndInsert(root, id, name, programme, mark, num_students) == 1){
-            printf("Failure to insert for this record\n", id);
+        if (token == NULL){
+            printf("Malformed input!\n");
             continue;
         }
+
+        char *endptr;
+
+        mark = strtof(token, &endptr);
+
+        if (*endptr == '\0') {// string converted
+            if (createAndInsert(root, id, name, programme, mark, num_students) == 1){
+                printf("Failure to insert for this record\n", id);
+                continue;
+            }
+        }
+
+        
     }
     
     fclose(file);
@@ -712,6 +765,52 @@ void input_showSorted(BTreeNode *root, int *num_students, char *sortby, char *or
     }
     else{
         printf("Follow this format to sort the data: SHOW ALL SORT BY ID/MARK ASC/DESC.\n");
+    }
+}
+
+bool parse_insert(char *input,
+                  int *id,
+                  char *name,
+                  char *programme,
+                  char *mark)
+{
+
+    char *token = strtok(input, " ");
+    char *key, *value;
+    printf("input:%s\n", input);
+    printf("token:%s\n", token);
+
+
+    while (token != NULL) {
+
+        key = strtok(token, "=");
+        value = strtok(NULL, "");
+
+        if (key && value) {
+            if (strcmp(key, "id") == 0) {
+                *id = *value;
+
+                printf("id:%s\n", value);
+                // strncpy(id, value, sizeof(id) - 1);
+            }
+            else if (strcmp(key, "name") == 0) {
+                printf("val1:%s\n", value);
+
+                strncpy(name, value, sizeof(name) - 1);
+            }
+            else if (strcmp(key, "programme") == 0) {
+                printf("val2:%s\n", value);
+
+                strncpy(programme, value, sizeof(programme) - 1);
+            }
+            else if (strcmp(key, "mark") == 0) {
+                printf("val3:%s\n", value);
+
+                strncpy(mark, value, sizeof(programme) - 1);
+            }
+        }
+
+        token = strtok(NULL, " ");
     }
 }
 
@@ -738,7 +837,27 @@ void input_showSummaryStatistics(BTreeNode *root, int *num_students){
     // }
 }
 
-void input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *val1, char *key2, char *val2, char *key3, char *val3){
+
+void input_insert(BTreeNode **root, int *id,int* num_students, char* name, char *programme, char *mark){
+
+        char *endptr;
+
+        float f = strtof(mark, &endptr);
+
+        if (*endptr == '\0') {// string converted
+            if (createAndInsert(root, *id, name, programme, f, num_students) == 1){
+                printf("Insertion failed!\n");
+            }
+        }
+        else{
+            
+            printf("Invalid Input!\n");
+        }
+    
+
+}
+
+void og_input_insert(BTreeNode **root, int *id,int* num_students,char *key1, char *val1, char *key2, char *val2, char *key3, char *val3){
     if (strcmp(key1, "name") != 0 || strcmp(key2, "programme") != 0 || strcmp(key3, "mark") != 0){
         printf("The order matters! Please follow the format given: INSERT ID=<ID NUMBER> NAME=<NAME> NAME=<PROGRAMME> MARK=<MARK>\n");
 
@@ -823,7 +942,7 @@ int main(){
 
     // insertDataForTesting(&root, p_num_students);
 
-    char op[100];
+    char op[256];
     int id;
 
     while (1) {
@@ -848,6 +967,7 @@ int main(){
         }
         // SHOW ALL
         else if (strcmp(op, "show all") == 0) {
+            printf("Op:%s",op);
             printf("Here are all the records found in StudentRecords \n");
             printHeader();
             traversal(root, false, NULL, NULL);
@@ -866,7 +986,23 @@ int main(){
             }
         }
         // INSERT 
-        else if (strstr(op, "insert") != NULL) {
+        // else if (strstr(op, "insert") != NULL) {
+        //     // char key1[MAX_PROGRAMME];
+        //     // char key2[MAX_PROGRAMME];
+        //     // char key3[MAX_PROGRAMME];
+
+
+        //     char val1[MAX_NAME];
+        //     char val2[MAX_PROGRAMME];
+        //     char val3[5];
+        //     parse_insert(op, &id, val1, val2, val3);
+        //     input_insert(&root, &id, p_num_students, val1, val2, val3);
+
+            
+        // }
+
+        //original insert
+         else if (strstr(op, "insert") != NULL) {
             char key1[MAX_PROGRAMME];
             char key2[MAX_PROGRAMME];
             char key3[MAX_PROGRAMME];
@@ -880,14 +1016,15 @@ int main(){
                 key1, val1,
                 key2, val2,
                 key3, val3) == 7) {
-                input_insert(&root, &id, p_num_students,key1,val1,key2,val2,key3,val3 );
+                og_input_insert(&root, &id, p_num_students,key1,val1,key2,val2,key3,val3 );
                 
 
             }
             else {
                 printf("Follow this format to insert new data: INSERT ID=<ID NUMBER> NAME=<NAME> PROGRAMME=<PROGRAMME>MARK=<MARK>\n");
             }
-        }
+         }
+
         // QUERY
         else if (strstr(op, "query") != NULL) {
             if (sscanf(op, "query id=%d", &id) == 1) {
