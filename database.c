@@ -615,7 +615,7 @@ void traversal(BTreeNode *root, bool descending, float* summaryStatistics, FILE*
                     summaryStatistics[2] = root->keys[key_to_index]->id;
 
                 }
-                else if (root->keys[key_to_index]->mark > summaryStatistics[1]){
+                if (root->keys[key_to_index]->mark > summaryStatistics[1]){
                     summaryStatistics[1] = root->keys[key_to_index]->mark;
                     summaryStatistics[3] = root->keys[key_to_index]->id;
                 }
